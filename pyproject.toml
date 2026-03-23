@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codex-cli"
+version = "0.1.0"
+description = "CLI and Python library for automating the ChatGPT Codex web UI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "spannella"},
+]
+
+dependencies = [
+    "playwright>=1.40.0",
+    "python-dotenv>=1.0.0",
+    "pyotp>=2.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[project.scripts]
+codex-cli = "codex_cli.cli:main"
+
+[project.urls]
+Repository = "https://github.com/spannella/codex-cli"
+
+[tool.setuptools.packages.find]
+include = ["codex_cli*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
