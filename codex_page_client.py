@@ -799,3 +799,101 @@ class CodexPageClient:
             time.sleep(poll_interval_s)
 
         raise TimeoutError("Timed out waiting for task to complete.")
+
+    # ===================================================================
+    # USAGE / SETTINGS
+    # ===================================================================
+
+    USAGE_URL = "https://chatgpt.com/codex/settings/general"
+
+    def get_usage(self) -> dict:
+        """Navigate to the usage dashboard and extract usage data.
+
+        Returns dict with keys: hourly, weekly, code_review, credits, history.
+        """
+        assert self.page is not None
+        self.navigate_to(self.USAGE_URL)
+        time.sleep(5)
+
+        # Click "Usage" in the sidebar
+        usage_link = self.page.locator(":text-is('Usage')")
+        if usage_link.count() and usage_link.first.is_visible():
+            usage_link.first.click()
+            time.sleep(3)
+
+        body_text = self.page.locator("body").inner_text()
+        lines = [l.strip() for l in body_text.split("\n") if l.strip()]
+
+        usage: dict = {
+            "hourly": {},
+            "weekly": {},
+            "code_review": {},
+            "credits": {},
+            "history": [],
+        }
+
+        # Parse the structured text
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+
+            # Hourly limit
+            if "hour usage limit" in line.lower():
+                pct = lines[i + 1] if i + 1 < len(lines) else ""
+                remaining = pct.replace("remaining", "").strip() if "remaining" in (lines[i + 2] if i + 2 < len(lines) else "") else pct
+                resets = ""
+                for j in range(i + 1, min(i + 5, len(lines))):
+                    if lines[j].startswith("Resets"):
+                        resets = lines[j].replace("Resets ", "")
+                        break
+                usage["hourly"] = {
+                    "label": line,
+                    "remaining_pct": remaining,
+                    "resets": resets,
+                }
+
+            # Weekly limit
+            elif "weekly usage limit" in line.lower():
+                pct = lines[i + 1] if i + 1 < len(lines) else ""
+                remaining = pct.replace("remaining", "").strip() if "remaining" in (lines[i + 2] if i + 2 < len(lines) else "") else pct
+                resets = ""
+                for j in range(i + 1, min(i + 5, len(lines))):
+                    if lines[j].startswith("Resets"):
+                        resets = lines[j].replace("Resets ", "")
+                        break
+                usage["weekly"] = {
+                    "label": line,
+                    "remaining_pct": remaining,
+                    "resets": resets,
+                }
+
+            # Code review
+            elif line.lower() == "code review":
+                pct = lines[i + 1] if i + 1 < len(lines) else ""
+                usage["code_review"] = {
+                    "remaining_pct": pct.replace("remaining", "").strip(),
+                }
+
+            # Credits remaining
+            elif "credits remaining" in line.lower():
+                credits_val = lines[i + 1] if i + 1 < len(lines) else ""
+                # Clean up — might be just a number like "2,126"
+                credits_val = credits_val.replace(",", "").strip()
+                if credits_val.replace(".", "").isdigit():
+                    usage["credits"] = {"remaining": credits_val}
+
+            # Usage history table rows: "Mar 5, 2026" followed by service and credits
+            elif re.match(r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d+,\s+\d{4}$", line):
+                date = line
+                service = lines[i + 1] if i + 1 < len(lines) else ""
+                amount = lines[i + 2] if i + 2 < len(lines) else ""
+                if "credits" in amount.lower() and re.search(r"\d", amount):
+                    usage["history"].append({
+                        "date": date,
+                        "service": service,
+                        "credits_used": re.sub(r"\s*credits\s*", "", amount).strip(),
+                    })
+
+            i += 1
+
+        return usage
