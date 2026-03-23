@@ -1,8 +1,8 @@
-"""Tests for codex_page_client module (non-browser tests)."""
+"""Tests for codex_cli._page_client module."""
 
 import unittest
 
-from codex_page_client import CodexPageClient
+from codex_cli._page_client import CodexPageClient
 
 
 class TestCodexPageClientInit(unittest.TestCase):
