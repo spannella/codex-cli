@@ -478,6 +478,51 @@ def cmd_send(args, config: Config) -> int:
     return 0
 
 
+def cmd_usage(args, config: Config) -> int:
+    """Show usage dashboard (limits, credits, history)."""
+    with codex_session(config) as client:
+        time.sleep(3)
+        usage = client.get_usage()
+
+        if args.json:
+            print(json.dumps(usage, indent=2, ensure_ascii=False))
+        else:
+            # Balance
+            h = usage.get("hourly", {})
+            w = usage.get("weekly", {})
+            cr = usage.get("code_review", {})
+            creds = usage.get("credits", {})
+
+            print("Usage Dashboard")
+            print("=" * 50)
+
+            if h:
+                print(f"  {h.get('label', 'Hourly limit')}: {h.get('remaining_pct', '?')} remaining")
+                if h.get("resets"):
+                    print(f"    Resets: {h['resets']}")
+
+            if w:
+                print(f"  {w.get('label', 'Weekly limit')}: {w.get('remaining_pct', '?')} remaining")
+                if w.get("resets"):
+                    print(f"    Resets: {w['resets']}")
+
+            if cr:
+                print(f"  Code review: {cr.get('remaining_pct', '?')} remaining")
+
+            if creds:
+                print(f"  Credits remaining: {creds.get('remaining', '?')}")
+
+            # History
+            history = usage.get("history", [])
+            if history:
+                print(f"\nUsage History ({len(history)} entries)")
+                print("-" * 50)
+                for entry in history:
+                    print(f"  {entry.get('date', '')}  {entry.get('service', '')}  {entry.get('credits_used', '')} credits")
+
+    return 0
+
+
 def cmd_cancel(args, config: Config) -> int:
     """Cancel a running task."""
     with codex_session(config) as client:
@@ -583,6 +628,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--task", help="Task index or title")
     s.add_argument("--wait", action="store_true")
 
+    # usage
+    s = sub.add_parser("usage", help="Show usage dashboard (limits, credits, history)")
+    s.add_argument("--json", action="store_true", dest="json")
+
     # cancel
     s = sub.add_parser("cancel", help="Cancel a running task")
     s.add_argument("--task", help="Task index or title")
@@ -607,6 +656,7 @@ COMMANDS = {
     "history": cmd_history,
     "logs": cmd_logs,
     "send": cmd_send,
+    "usage": cmd_usage,
     "cancel": cmd_cancel,
 }
 
