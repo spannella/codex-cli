@@ -1,0 +1,25 @@
+# Credentials and session
+.env
+.playwright_storage_state.json
+
+# Runtime state
+.ticket_runner_state.json
+.codex_task_cache.json
+.codex_current_task.json
+
+# Screenshots
+screenshots/
+
+# Videos (except demo files)
+videos/*.webm
+!videos/demo.webm
+!videos/demo.gif
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/

@@ -1,6 +1,6 @@
-import tempfile
+"""Tests for ticket_implementation_runner module."""
+
 import unittest
-from pathlib import Path
 
 from ticket_implementation_runner import build_message, next_ticket, parse_tickets
 
