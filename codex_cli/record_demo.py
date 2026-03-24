@@ -83,9 +83,67 @@ def record_demo(config, args):
             }""")
             time.sleep(3)
 
-            # --- Step 3: Work a ticket ---
+            # --- Step 3: Open a task and browse it ---
+            log.info("Step 3: Opening a task...")
+            task_links = page.locator("a[href*='/codex/tasks/']")
+            if task_links.count() >= 2:
+                # Click the second task (first completed one usually)
+                task_links.nth(1).click()
+                time.sleep(8)
+
+                log.info("Step 4: Browsing task conversation...")
+                # Scroll through conversation
+                for i in range(3):
+                    page.evaluate("""() => {
+                        const els = document.querySelectorAll('*');
+                        for (const el of els) {
+                            if (el.scrollHeight > el.clientHeight + 50 && el.clientHeight > 100) {
+                                el.scrollBy(0, 300);
+                            }
+                        }
+                    }""")
+                    time.sleep(2)
+
+                # Expand a "Worked for" section to show files/logs
+                log.info("Step 5: Expanding work section...")
+                worked = page.locator("button:has-text('Worked for')")
+                if worked.count():
+                    worked.first.click()
+                    time.sleep(3)
+
+                    # Click Files toggle if available
+                    files_toggle = page.locator("button[aria-label='Toggle file list diffs']")
+                    if files_toggle.count() and files_toggle.first.is_visible():
+                        files_toggle.first.click()
+                        time.sleep(3)
+
+                    # Click Logs tab if available
+                    logs_tab = page.locator("button[aria-label='Tab to view the work logs']")
+                    if logs_tab.count() and logs_tab.first.is_visible():
+                        logs_tab.first.click()
+                        time.sleep(3)
+
+                    # Scroll the logs
+                    page.evaluate("""() => {
+                        const els = document.querySelectorAll('*');
+                        for (const el of els) {
+                            if (el.scrollHeight > el.clientHeight + 50 && el.clientHeight > 100) {
+                                el.scrollBy(0, 500);
+                            }
+                        }
+                    }""")
+                    time.sleep(3)
+
+                # Go back to main page
+                log.info("Step 6: Going back...")
+                back_btn = page.locator("button[aria-label='Go back to tasks']")
+                if back_btn.count() and back_btn.first.is_visible():
+                    back_btn.first.click()
+                    time.sleep(3)
+
+            # --- Step 7: Submit a task (if --work-ticket) ---
             if args.work_ticket:
-                log.info("Step 3: Submitting a ticket...")
+                log.info("Step 7: Submitting a new task...")
                 tickets_path = Path(args.tickets)
                 if tickets_path.is_file():
                     tickets_md = tickets_path.read_text(encoding="utf-8", errors="ignore")
@@ -95,10 +153,8 @@ def record_demo(config, args):
                     ticket = next_ticket(tickets, implemented)
 
                     if ticket:
-                        message = build_message(ticket)
                         log.info(f"Submitting: {ticket.ticket_id} — {ticket.title}")
 
-                        # Select environment if configured
                         if config.env_name:
                             env_btn = page.locator("button[aria-label='View all code environments']")
                             if env_btn.count() and env_btn.first.is_visible():
@@ -109,60 +165,20 @@ def record_demo(config, args):
                                     opt.first.click()
                                     time.sleep(2)
 
-                        # Type the task message
                         prompt = page.locator("[role='textbox'], [contenteditable='true']").first
                         if prompt.is_visible():
                             prompt.click()
                             prompt.press("Control+a")
-                            prompt.type(message[:200] + "...")  # Truncate for demo
+                            prompt.type(build_message(ticket)[:200] + "...")
                             time.sleep(2)
-
-                            # Submit
                             send_btn = page.locator("button[aria-label*='Submit']")
                             if send_btn.count() and send_btn.first.is_visible():
                                 send_btn.first.click()
                                 time.sleep(3)
-
                             log.info("Task submitted!")
                             time.sleep(5)
-
-                            # Step 4: Navigate into the new task
-                            log.info("Step 4: Opening the task...")
-                            # Reload task list and find the new task
-                            page.goto(config.codex_url, wait_until="domcontentloaded", timeout=30000)
-                            time.sleep(5)
-                            task_links = page.locator("a[href*='/codex/tasks/']")
-                            if task_links.count():
-                                # Click the first (newest) task
-                                task_links.first.click()
-                                time.sleep(5)
-
-                                log.info("Step 5: Watching Codex work...")
-                                # Wait and show the task processing
-                                wait_s = min(args.wait_time, 120)
-                                deadline = time.time() + wait_s
-                                while time.time() < deadline:
-                                    # Check if stop button is gone (task done)
-                                    stop = page.locator("button[aria-label*='Stop']")
-                                    if not stop.count() or not stop.first.is_visible():
-                                        log.info("Task appears to have completed!")
-                                        time.sleep(5)
-                                        break
-                                    time.sleep(5)
-
-                                # Scroll through the result
-                                page.evaluate("""() => {
-                                    const els = document.querySelectorAll('*');
-                                    for (const el of els) {
-                                        if (el.scrollHeight > el.clientHeight + 50 && el.clientHeight > 100) {
-                                            el.scrollTop = el.scrollHeight;
-                                        }
-                                    }
-                                }""")
-                                time.sleep(3)
-
                     else:
-                        log.info("No tickets remaining to submit")
+                        log.info("No tickets remaining")
 
             time.sleep(3)
             log.info("Demo recording complete!")
